@@ -1,0 +1,46 @@
+
+name: IT Support RAG - Azure CD
+
+on:
+  workflow_run:
+    workflows: ["IT Support RAG - CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Build and Push Docker Images
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout tested commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Azure login using OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to Azure Container Registry
+        run: az acr login --name acritsupportragdev
+
+      - name: Build and push FastAPI image
+        run: |
+          docker build -f Dockerfile.api \
+            -t acritsupportragdev.azurecr.io/it-support-rag-api:${{ github.event.workflow_run.head_sha }} .
+          docker push acritsupportragdev.azurecr.io/it-support-rag-api:${{ github.event.workflow_run.head_sha }}
+
+      - name: Build and push Streamlit image
+        run: |
+          docker build -f Dockerfile.ui \
+            -t acritsupportragdev.azurecr.io/it-support-rag-ui:${{ github.event.workflow_run.head_sha }} .
+          docker push acritsupportragdev.azurecr.io/it-support-rag-ui:${{ github.event.workflow_run.head_sha }}
