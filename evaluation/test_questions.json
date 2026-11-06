@@ -1,0 +1,53 @@
+
+[
+  {
+  "id": "EVAL_001",
+  "question": "My VPN is connected but I cannot access an internal company application. What should I do?",
+  "expected_source": "vpn_troubleshooting.txt",
+  "answerable": true,
+  "expected_facts": [
+    "Verify that the VPN client reports a successful connection",
+    "Disconnect and reconnect to the VPN",
+    "Check whether other internal applications are accessible",
+    "Verify that the correct internal application URL is being used",
+    "If only one application is inaccessible, contact the application support team",
+    "If all internal applications are inaccessible, contact the network support team"
+  ]
+},
+  {
+    "id": "EVAL_002",
+    "question": "How often should I change my network password?",
+    "expected_source": "password_policy.txt",
+    "answerable": true
+  },
+  {
+    "id": "EVAL_003",
+    "question": "Can I access internal applications while working remotely?",
+    "expected_source": "remote_work_policy.txt",
+    "answerable": true
+  },
+  {
+    "id": "EVAL_004",
+    "question": "How do I request access to company software?",
+    "expected_source": "software_access.txt",
+    "answerable": true
+  },
+  {
+    "id": "EVAL_005",
+    "question": "What are the IT helpdesk support hours?",
+    "expected_source": "helpdesk_support.txt",
+    "answerable": true
+  },
+  {
+    "id": "EVAL_006",
+    "question": "What is the company's maternity leave policy?",
+    "expected_source": null,
+    "answerable": false
+  },
+  {
+    "id": "EVAL_007",
+    "question": "What is the company cafeteria menu for tomorrow?",
+    "expected_source": null,
+    "answerable": false
+  }
+]

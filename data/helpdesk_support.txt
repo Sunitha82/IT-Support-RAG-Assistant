@@ -1,0 +1,4 @@
+Document ID: IT-004
+Title: IT Helpdesk Support
+
+The IT helpdesk operates Monday to Friday, 9 AM to 6 PM. Employees can raise support tickets for network, hardware, software and application issues.

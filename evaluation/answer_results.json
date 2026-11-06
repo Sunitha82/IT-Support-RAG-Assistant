@@ -1,0 +1,30 @@
+[
+  {
+    "id": "EVAL_001",
+    "question": "My VPN is connected but I cannot access an internal company application. What should I do?",
+    "answer": "If your VPN is connected but you cannot access an internal company application, the knowledge base recommends these steps:\n\n1. Verify that the VPN client reports a successful connection.  \n2. Disconnect and reconnect to the VPN.  \n3. Check whether other internal applications are accessible.  \n4. Verify that you are using the correct internal application URL.  \n5. If only one application is inaccessible, contact the application support team.  \n6. If all internal applications are inaccessible, contact the network support team.  \n\nThe remote work policy confirms that access to internal company applications from outside the office requires the company VPN. [vpn_troubleshooting.txt, remote_work_policy.txt]",
+    "sources": [
+      "vpn_troubleshooting.txt",
+      "remote_work_policy.txt"
+    ],
+    "expected_facts": [
+      "Verify that the VPN client reports a successful connection",
+      "Disconnect and reconnect to the VPN",
+      "Check whether other internal applications are accessible",
+      "Verify that the correct internal application URL is being used",
+      "If only one application is inaccessible, contact the application support team",
+      "If all internal applications are inaccessible, contact the network support team"
+    ],
+    "matched_facts": [
+      "Verify that the VPN client reports a successful connection",
+      "Disconnect and reconnect to the VPN",
+      "Check whether other internal applications are accessible",
+      "If only one application is inaccessible, contact the application support team",
+      "If all internal applications are inaccessible, contact the network support team"
+    ],
+    "missing_facts": [
+      "Verify that the correct internal application URL is being used"
+    ],
+    "completeness": 0.8333
+  }
+]

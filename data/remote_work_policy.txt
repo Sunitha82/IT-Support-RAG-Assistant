@@ -1,0 +1,4 @@
+Document ID: HR-001
+Title: Remote Work Policy
+
+Employees may work remotely with manager approval. Access to internal company applications from outside the office requires the company VPN. Employees must follow company security policies when working remotely.

@@ -1,0 +1,34 @@
+
+# Python virtual environment
+.venv/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Python cache
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local vector database
+chroma_db/
+
+# Hugging Face cache
+hf_cache/
+
+# Generated outputs and logs
+outputs/
+*.log
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/

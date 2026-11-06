@@ -1,0 +1,4 @@
+Document ID: IT-003
+Title: Software Access Policy
+
+Employees requiring access to internal applications must raise a service request. Manager approval is required. Access is granted by the application support team after approval.

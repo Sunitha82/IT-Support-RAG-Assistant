@@ -1,0 +1,10 @@
+Document ID: IT-001
+Title: VPN Troubleshooting Guide
+
+If the VPN is connected but an internal application cannot be accessed:
+1. Verify that the VPN client reports a successful connection.
+2. Disconnect and reconnect to the VPN.
+3. Check whether other internal applications are accessible.
+4. Verify that the correct internal application URL is being used.
+5. If only one application is inaccessible, contact the application support team.
+6. If all internal applications are inaccessible, contact the network support team.

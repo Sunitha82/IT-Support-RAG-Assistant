@@ -1,0 +1,52 @@
+[
+  {
+    "id": "EVAL_001",
+    "question": "My VPN is connected but I cannot access an internal company application. What should I do?",
+    "answer": "If the VPN is connected but an internal application cannot be accessed, the knowledge base recommends these steps:\n\n1. Verify that the VPN client reports a successful connection.\n2. Disconnect and reconnect to the VPN.\n3. Check whether other internal applications are accessible.\n4. Verify that the correct internal application URL is being used.  \n   - If only one application is inaccessible, contact the application support team.\n   - If all internal applications are inaccessible, contact the network support team.  \n   Source: `vpn_troubleshooting.txt`\n\nThe remote work policy confirms that access to internal company applications from outside the office requires the company VPN. Source: `remote_work_policy.txt`\n\nI don't have enough information in the IT knowledge base to provide any additional troubleshooting steps.",
+    "sources": [
+      "vpn_troubleshooting.txt",
+      "remote_work_policy.txt"
+    ],
+    "judgment": {
+      "fact_assessments": [
+        {
+          "expected_fact": "Verify that the VPN client reports a successful connection",
+          "covered": true,
+          "explanation": "The answer explicitly includes this step."
+        },
+        {
+          "expected_fact": "Disconnect and reconnect to the VPN",
+          "covered": true,
+          "explanation": "The answer explicitly includes disconnecting and reconnecting."
+        },
+        {
+          "expected_fact": "Check whether other internal applications are accessible",
+          "covered": true,
+          "explanation": "The answer explicitly recommends checking other internal applications."
+        },
+        {
+          "expected_fact": "Verify that the correct internal application URL is being used",
+          "covered": true,
+          "explanation": "The answer explicitly includes verifying the correct URL."
+        },
+        {
+          "expected_fact": "If only one application is inaccessible, contact the application support team",
+          "covered": true,
+          "explanation": "The answer states this contingency directly."
+        },
+        {
+          "expected_fact": "If all internal applications are inaccessible, contact the network support team",
+          "covered": true,
+          "explanation": "The answer states this contingency directly."
+        }
+      ],
+      "completeness_score": 1.0,
+      "faithfulness_score": 0.93,
+      "unsupported_claims": [
+        "The statement that 'The remote work policy confirms that access to internal company applications from outside the office requires the company VPN' is not directly asked for in the expected facts, though it is supported by the retrieved policy document."
+      ],
+      "verdict": "fail",
+      "explanation": "All expected troubleshooting steps are covered, and the answer is well supported by the retrieved documents. The extra policy statement is supported by the context, so faithfulness remains high."
+    }
+  }
+]
