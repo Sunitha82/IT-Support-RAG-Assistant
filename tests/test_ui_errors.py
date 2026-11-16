@@ -87,3 +87,13 @@ def test_authentication_error_message():
 
     assert "Authentication failed" in message
     assert "administrator" in message
+
+
+def test_guardrail_error_is_meaningful_without_reflecting_server_text():
+    response = requests.Response()
+    response.status_code = 422
+    response._content = b'{"detail":{"code":"input_guardrail_rejected","message":"private server details"}}'
+    message = get_request_error_message(requests.HTTPError(response=response))
+    assert "IT support" in message
+    assert "internal instructions" in message
+    assert "private server details" not in message

@@ -1,34 +1,23 @@
-
-# Python virtual environment
-.venv/
-
-# Environment variables and secrets
+# Local secrets
 .env
 .env.*
 !.env.example
-.streamlit/secrets.toml
 
-# Python cache
-__pycache__/
-*.pyc
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-
-# Local vector database
+# Local vector indexes
+faiss_db/
+faiss_parent_child_db/
+faiss_azure_test_db/
 chroma_db/
 
-# Hugging Face cache
-hf_cache/
+# Backup and temporary files
+*_old.py
+*.old
+*-backup.yaml
+*-local.yaml
+rag_chunk_debug_updates.zip
 
-# Generated outputs and logs
-outputs/
-*.log
-
-# Operating system files
-.DS_Store
-Thumbs.db
-
-# IDE files
-.vscode/
-.idea/
+# Python environments and caches
+.venv/
+__pycache__/
+.pytest_cache/
+.local/rag-demo/

@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.api.main import app
 from app.api.routes.rag import get_rag_service
+from app.core.config import get_settings
 
 
 TEST_API_KEY = "test-only-api-key-do-not-use-in-production"
@@ -58,10 +59,12 @@ def test_invalid_api_key(client):
     assert response.status_code == 401
 
 
+
 def test_missing_server_configuration(client, monkeypatch):
     """Authentication must fail closed if the server key is missing."""
 
-    monkeypatch.delenv("RAG_API_KEY", raising=False)
+    monkeypatch.setenv("RAG_API_KEY", "")
+    get_settings.cache_clear()
 
     response = client.post(
         "/ask",
@@ -70,6 +73,7 @@ def test_missing_server_configuration(client, monkeypatch):
     )
 
     assert response.status_code == 503
+
 
 
 def test_valid_api_key_passes_authentication(client):

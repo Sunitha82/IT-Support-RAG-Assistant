@@ -1,4 +1,4 @@
-
+﻿
 """Tests for API error handling."""
 
 from unittest.mock import Mock
@@ -17,7 +17,7 @@ from app.core.exceptions import (
     LLMTimeoutError,
     LLMUnavailableError,
     EmbeddingServiceError,
-    VectorStoreError,       
+    VectorStoreError,
 )
 
 
@@ -39,6 +39,7 @@ def client(monkeypatch):
             yield test_client, mock_service
     finally:
         app.dependency_overrides.clear()
+
 @pytest.mark.parametrize(
     "exception, expected_status",
     [
@@ -58,7 +59,7 @@ def test_ask_handles_llm_errors(
     """Verify that Azure failures map to safe HTTP responses."""
 
     test_client, mock_service = client
-    mock_service.ask.side_effect = exception
+    mock_service.ask_with_tracing.side_effect = exception
 
     response = test_client.post(
         "/ask",
@@ -79,7 +80,7 @@ def test_unexpected_error_returns_500(client):
     """Unexpected failures should return a generic error."""
 
     test_client, mock_service = client
-    mock_service.ask.side_effect = RuntimeError(
+    mock_service.ask_with_tracing.side_effect = RuntimeError(
         "Sensitive internal failure details"
     )
 
@@ -100,7 +101,7 @@ def test_vector_store_failure_returns_503(client):
 
     test_client, mock_service = client
 
-    mock_service.ask.side_effect = VectorStoreError(
+    mock_service.ask_with_tracing.side_effect = VectorStoreError(
         "Sensitive ChromaDB internal error"
     )
 
@@ -122,7 +123,7 @@ def test_embedding_failure_returns_503(client):
 
     test_client, mock_service = client
 
-    mock_service.ask.side_effect = EmbeddingServiceError(
+    mock_service.ask_with_tracing.side_effect = EmbeddingServiceError(
         "Sensitive embedding model error"
     )
 
@@ -137,4 +138,3 @@ def test_embedding_failure_returns_503(client):
     )
     assert "Sensitive embedding model error" not in response.text
     assert response.headers.get("X-Request-ID")
-

@@ -1,7 +1,8 @@
 
 """API key authentication for protected FastAPI endpoints."""
 
-import os
+
+from app.core.config import get_settings
 import secrets
 
 from fastapi import HTTPException, Security
@@ -19,7 +20,7 @@ def verify_api_key(
 ) -> None:
     """Reject requests without a valid API key."""
 
-    expected_key = os.getenv("RAG_API_KEY")
+    expected_key = get_settings().rag_api_key
 
     # Fail closed if the server key is not configured.
     if not expected_key:

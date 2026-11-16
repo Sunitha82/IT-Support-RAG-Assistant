@@ -6,6 +6,7 @@ from functools import lru_cache
 
 from fastapi import APIRouter, Depends, HTTPException
 from app.api.security import verify_api_key
+from app.guardrails.input_guard import InputGuardrailError
 
 from app.api.schemas.rag import (
     AskRequest,
@@ -23,12 +24,36 @@ from app.core.exceptions import (
     EmbeddingServiceError,
     VectorStoreError,
 )
-from app.retrieval.vector_store import VectorStore
+from app.retrieval.store_factory import create_vector_store
+from app.core.config import get_settings
+from app.retrieval.parent_child_store import ParentChildStore
 from app.services.rag_service import RAGService
+from app.ui.topic_catalog import build_topic_catalog
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+@router.get("/topics", dependencies=[Depends(verify_api_key)])
+def available_topics():
+    """Expose only topic metadata for documents in the selected active index."""
+    try:
+        settings = get_settings()
+        if settings.retrieval_mode == "enhanced":
+            store = ParentChildStore(settings.parent_child_faiss_dir)
+            sources = {parent.source: parent.title for parent in store.parents.values()}
+        else:
+            store = create_vector_store()
+            if hasattr(store, "documents"):
+                metadata = store.documents
+            else:
+                metadata = store.collection.get(include=["metadatas"])["metadatas"]
+            sources = {item["source"]: "" for item in metadata if item and item.get("source")}
+        return {"topics": build_topic_catalog(sources), "source_count": len(sources)}
+    except Exception:
+        logger.warning("Topic metadata is unavailable")
+        raise HTTPException(status_code=503, detail="Available topics could not be loaded") from None
 
 
 # -------------------------------------------------
@@ -60,8 +85,20 @@ def ready() -> ReadinessResponse:
     """Check whether indexed documents are available."""
 
     try:
-        store = VectorStore()
-        count = store.count()
+        settings = get_settings()
+        if settings.retrieval_mode == "enhanced":
+            store = ParentChildStore(settings.parent_child_faiss_dir)
+            count = store.vector_store.count()
+            # Child vectors need their parent text and relationships to answer.
+            child_ids = {doc["chunk_id"] for doc in store.vector_store.documents}
+            if any(
+                store.child_to_parent.get(child_id) not in store.parents
+                for child_id in child_ids
+            ):
+                raise ValueError("Parent-child index has missing parent records")
+        else:
+            store = create_vector_store()
+            count = store.count()
 
         if count == 0:
             raise HTTPException(
@@ -107,12 +144,15 @@ def ask_question(
         )
 
     try:
-        result = service.ask(request.question)
+        result = service.ask_with_tracing(request.question, top_k=request.top_k)
 
         return AskResponse(
             question=result.question,
             answer=result.answer,
             sources=result.sources,
+            privacy=result.privacy,
+            trace_id=result.trace_id,
+            tracing_status=result.tracing_status,
             retrieval_details=[
                 {
                     "source": detail.source,
@@ -120,10 +160,19 @@ def ask_question(
                     "rank": detail.rank,
                     "distance": detail.distance,
                     "similarity": detail.similarity,
+                    "content": detail.content,
+                    "child_id": detail.child_id,
+                    "rerank_score": detail.rerank_score,
+                    "rrf_score": detail.rrf_score,
                 }
                 for detail in result.retrieval_details
             ],
         )
+    except InputGuardrailError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from None
 
     except LLMTimeoutError:
         logger.warning("LLM request timed out")

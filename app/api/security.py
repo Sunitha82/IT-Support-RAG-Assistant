@@ -6,7 +6,7 @@ import secrets
 
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
-
+from app.core.config import get_settings
 
 api_key_header = APIKeyHeader(
     name="X-API-Key",
@@ -19,7 +19,7 @@ def verify_api_key(
 ) -> None:
     """Verify the API key supplied by the client."""
 
-    expected_key = os.getenv("RAG_API_KEY")
+    expected_key = get_settings().rag_api_key
 
     if not expected_key:
         raise HTTPException(

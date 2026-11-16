@@ -9,10 +9,16 @@ ENV PYTHONPATH=/app
 
 COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+
+# Install CPU-only PyTorch before sentence-transformers to avoid CUDA packages.
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
+    && pip install --no-cache-dir -r requirements.txt
+
+RUN python -m spacy download en_core_web_lg
 
 # Create a non-root application user
 RUN useradd --create-home --uid 10001 appuser
+
 
 # Copy application files
 COPY --chown=appuser:appuser app/ ./app/
@@ -20,9 +26,38 @@ COPY --chown=appuser:appuser scripts/ ./scripts/
 COPY --chown=appuser:appuser data/ ./data/
 COPY --chown=appuser:appuser evaluation/ ./evaluation/
 
-# Create writable application directories
-RUN mkdir -p /app/chroma_db /app/hf_cache \
-    && chown -R appuser:appuser /app/chroma_db /app/hf_cache
+
+# Create writable directories for all vector stores
+RUN mkdir -p \
+    /app/chroma_db \
+    /app/faiss_db \
+    /app/faiss_parent_child_db \
+    /app/hf_cache \
+    && chown -R appuser:appuser \
+    /app/chroma_db \
+    /app/faiss_db \
+    /app/faiss_parent_child_db \
+    /app/hf_cache
+
+# Build the ChromaDB knowledge base from local documents
+ENV HF_HOME=/app/hf_cache
+ENV DOCUMENT_SOURCE=local
+ENV VECTOR_STORE_PROVIDER=chroma
+
+RUN python -m scripts.index_documents
+
+# Include the standard FAISS index for deployments selecting that provider.
+RUN VECTOR_STORE_PROVIDER=faiss python -m scripts.index_documents
+
+# Build the parent-child FAISS knowledge base
+RUN python -m scripts.index_parent_child
+
+# Cache the enhanced retrieval model before switching to the runtime user.
+RUN python -c "from sentence_transformers import CrossEncoder; CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
+
+# Give the runtime user ownership of the indexes and shared model cache.
+RUN chown -R appuser:appuser \
+    /app/chroma_db /app/faiss_db /app/faiss_parent_child_db /app/hf_cache
 
 # Run the API as a non-root user
 USER appuser

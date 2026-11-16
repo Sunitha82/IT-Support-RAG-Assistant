@@ -4,6 +4,8 @@
 import logging
 import time
 import uuid
+from contextlib import asynccontextmanager
+from app.observability.langfuse_tracing import flush_traces
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -19,7 +21,16 @@ logger = logging.getLogger("app.api")
 
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(app):
+    try:
+        yield
+    finally:
+        flush_traces()
+
 app = FastAPI(
+    lifespan=lifespan,
     title=settings.app_name,
     description="Internal IT Support Assistant powered by RAG",
     version="1.0.0",
