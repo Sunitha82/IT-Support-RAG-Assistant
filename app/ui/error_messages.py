@@ -47,6 +47,19 @@ def get_request_error_message(error: Exception) -> str:
         response = error.response
 
         if response is not None:
+            if response.status_code == 422:
+                try:
+                    detail = response.json().get("detail", {})
+                except (ValueError, AttributeError):
+                    detail = {}
+                # Display only our known error code, never arbitrary server text.
+                if isinstance(detail, dict) and detail.get("code") == "input_guardrail_rejected":
+                    return (
+                        "I can help with IT support questions, but I can't reveal internal "
+                        "instructions or follow requests to override them. "
+                        "Please ask about VPN, passwords, or software access."
+                    )
+                return "Please enter an IT support question of 2,000 characters or fewer."
             return get_api_error_message(response.status_code)
 
         return "Unable to process your request."

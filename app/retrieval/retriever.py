@@ -4,6 +4,7 @@
 import logging
 from dataclasses import dataclass
 
+
 from app.core.config import get_settings
 from app.core.exceptions import (
     EmbeddingServiceError,
@@ -11,6 +12,8 @@ from app.core.exceptions import (
 )
 from app.retrieval.embeddings import EmbeddingService
 from app.retrieval.vector_store import VectorStore
+from app.retrieval.faiss_store import FAISSVectorStore
+from app.retrieval.store_factory import create_vector_store
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +28,9 @@ class RetrievalResult:
     content: str
     distance: float
     rank: int
+    child_id: str | None = None
+    rerank_score: float | None = None
+    rrf_score: float | None = None
 
 
 class SemanticRetriever:
@@ -33,7 +39,7 @@ class SemanticRetriever:
     def __init__(
         self,
         embedding_service: EmbeddingService | None = None,
-        vector_store: VectorStore | None = None,
+        vector_store: VectorStore | FAISSVectorStore | None = None,
     ) -> None:
 
         self.embedding_service = (
@@ -45,7 +51,7 @@ class SemanticRetriever:
         self.vector_store = (
             vector_store
             if vector_store is not None
-            else VectorStore()
+            else create_vector_store()
         )
 
     def retrieve(
@@ -85,7 +91,7 @@ class SemanticRetriever:
                 "Unable to generate the question embedding"
             ) from exc
 
-        # Step 2: Search ChromaDB.
+        # Step 2: Search the configured vector store.
         try:
             matches = self.vector_store.search(
                 query_embedding=query_embedding,

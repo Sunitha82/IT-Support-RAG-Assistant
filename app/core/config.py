@@ -1,11 +1,14 @@
 
 """Centralised application configuration."""
 
+import os
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from app.core.keyvault import get_secret
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -16,9 +19,22 @@ class Settings(BaseSettings):
 
     app_name: str = "IT Support RAG Assistant"
     app_env: str = "development"
+    rag_api_key: str | None = None
 
     data_dir: Path = PROJECT_ROOT / "data"
+
+    # Select which vector store to use.
+    vector_store_provider: Literal["chroma", "faiss"] = "chroma"
+
+    # Directories for storing vector embeddings.
     chroma_dir: Path = PROJECT_ROOT / "chroma_db"
+    faiss_dir: Path = PROJECT_ROOT / "faiss_db"
+    # Select the retrieval pipeline.
+    # Standard preserves the existing RAG behaviour.
+    retrieval_mode: Literal["standard", "enhanced"] = "standard"
+
+    # Separate storage for parent-child FAISS embeddings.
+    parent_child_faiss_dir: Path = PROJECT_ROOT / "faiss_parent_child_db"
 
     embedding_model: str = (
         "sentence-transformers/all-MiniLM-L6-v2"
@@ -52,7 +68,24 @@ class Settings(BaseSettings):
             )
 
 
+
 @lru_cache
 def get_settings() -> Settings:
-    """Reuse one validated configuration instance."""
-    return Settings()
+    """Load configuration, including secrets from Azure Key Vault."""
+
+    settings = Settings()
+
+    use_keyvault = os.getenv(
+        "USE_AZURE_KEY_VAULT", "false"
+    ).lower() == "true"
+
+    if use_keyvault:
+        settings.azure_openai_api_key = get_secret(
+            "AZURE-OPENAI-KEY"
+        )
+
+        settings.rag_api_key = get_secret(
+            "RAG-API-KEY"
+        )
+
+    return settings

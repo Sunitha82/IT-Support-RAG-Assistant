@@ -1,4 +1,4 @@
-
+﻿
 """Automated tests for the FastAPI endpoints."""
 
 from unittest.mock import Mock
@@ -18,7 +18,7 @@ def client(monkeypatch):
     monkeypatch.setenv("RAG_API_KEY", TEST_API_KEY)
     mock_service = Mock()
 
-    mock_service.ask.return_value = RAGResponse(
+    mock_service.ask_with_tracing.return_value = RAGResponse(
         question="How do I fix my VPN?",
         answer="Reconnect to the VPN.",
         sources=["vpn_troubleshooting.txt"],
@@ -60,8 +60,9 @@ def test_ask_endpoint_success(client):
         "vpn_troubleshooting.txt"
     ]
 
-    mock_service.ask.assert_called_once_with(
-        "How do I fix my VPN?"
+    mock_service.ask_with_tracing.assert_called_once_with(
+    "How do I fix my VPN?",
+    top_k=5
     )
 
 
@@ -74,7 +75,7 @@ def test_ask_rejects_empty_question(client):
     )
 
     assert response.status_code == 422
-    mock_service.ask.assert_not_called()
+    mock_service.ask_with_tracing.assert_not_called()
 
 
 def test_ask_rejects_whitespace_question(client):
@@ -86,7 +87,7 @@ def test_ask_rejects_whitespace_question(client):
     )
 
     assert response.status_code == 422
-    mock_service.ask.assert_not_called()
+    mock_service.ask_with_tracing.assert_not_called()
 
 
 def test_ask_rejects_missing_question(client):
@@ -103,7 +104,7 @@ def test_ask_rejects_missing_question(client):
 def test_ask_handles_missing_evidence(client):
     test_client, mock_service = client
 
-    mock_service.ask.return_value = RAGResponse(
+    mock_service.ask_with_tracing.return_value = RAGResponse(
         question="What is the maternity leave policy?",
         answer="I don't have enough information in the IT knowledge base.",
         sources=[],
@@ -126,7 +127,7 @@ def test_ask_handles_missing_evidence(client):
 def test_ask_handles_service_failure(client):
     test_client, mock_service = client
 
-    mock_service.ask.side_effect = RuntimeError(
+    mock_service.ask_with_tracing.side_effect = RuntimeError(
         "Simulated Azure service failure"
     )
 

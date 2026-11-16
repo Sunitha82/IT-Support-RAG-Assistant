@@ -12,9 +12,16 @@ services:
       DATA_DIR: /app/data
       CHROMA_DIR: /app/chroma_db
       HF_HOME: /app/hf_cache
+      AZURE_CLIENT_ID: ${AZURE_CLIENT_ID}
+      AZURE_CLIENT_SECRET: ${AZURE_CLIENT_SECRET}
+      AZURE_KEY_VAULT_URL: ${AZURE_KEY_VAULT_URL}
+      USE_AZURE_KEY_VAULT: "true"
+      PARENT_CHILD_FAISS_DIR: /app/faiss_azure_test_db
     volumes:
       - chroma_data:/app/chroma_db
       - huggingface_cache:/app/hf_cache
+      - faiss_data:/app/faiss_db
+      - ./faiss_azure_test_db:/app/faiss_azure_test_db
     restart: unless-stopped
     
     healthcheck:
@@ -38,6 +45,7 @@ services:
     environment:
       RAG_API_URL: http://api:8000
       RAG_API_KEY: ${RAG_API_KEY:?RAG_API_KEY must be configured}
+      PYTHONPATH: /app
     depends_on:
       api:
         condition: service_healthy
@@ -46,3 +54,4 @@ services:
 volumes:
   chroma_data:
   huggingface_cache:
+  faiss_data:

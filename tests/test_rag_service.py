@@ -7,6 +7,7 @@ import pytest
 
 from app.retrieval.retriever import RetrievalResult
 from app.services.rag_service import RAGService
+from app.services.rag_service import NO_EVIDENCE_MESSAGE
 
 
 @pytest.fixture
@@ -78,7 +79,7 @@ def test_no_evidence_returns_fallback(rag_service):
         "How many days of maternity leave do employees receive?"
     )
 
-    assert response.answer == RAGService.NO_EVIDENCE_MESSAGE
+    assert response.answer == NO_EVIDENCE_MESSAGE
     assert response.sources == []
 
 
@@ -141,5 +142,6 @@ def test_question_is_trimmed(rag_service):
     assert response.question == "How do I fix my VPN?"
 
     rag_service.retriever.retrieve.assert_called_once_with(
-        "How do I fix my VPN?"
+    "How do I fix my VPN?",
+    top_k=5
     )

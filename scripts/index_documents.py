@@ -2,11 +2,16 @@
 """Index IT support documents into ChromaDB."""
 
 import logging
+import os
+
+from app.ingestion.azure_blob_loader import (
+    load_documents_from_azure_blob,
+)
 
 from app.ingestion.document_loader import load_documents
 from app.ingestion.chunking import chunk_documents
 from app.retrieval.embeddings import EmbeddingService
-from app.retrieval.vector_store import VectorStore
+from app.retrieval.store_factory import create_vector_store
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,7 +25,15 @@ def main() -> None:
     """Load, chunk, embed and index documents."""
 
     # Step 1: Load the source documents.
-    documents = load_documents()
+    document_source = os.getenv("DOCUMENT_SOURCE", "local").lower()
+
+    if document_source == "azure_blob":
+        documents = load_documents_from_azure_blob(
+            storage_account="stitragdocs2026",
+            container_name="it-support-documents",
+        )
+    else:
+        documents = load_documents()
 
     if not documents:
         raise ValueError("No documents found for indexing")
@@ -41,8 +54,8 @@ def main() -> None:
 
     logger.info("Embedding shape: %s", embeddings.shape)
 
-    # Step 4: Persist chunks and vectors in ChromaDB.
-    vector_store = VectorStore()
+    # Step 4: Persist chunks and vectors in the selected vector store.
+    vector_store = create_vector_store()
 
     vector_store.add_chunks(
         chunks=chunks,

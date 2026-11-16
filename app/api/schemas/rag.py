@@ -5,12 +5,12 @@ from pydantic import BaseModel, Field
 
 
 class AskRequest(BaseModel):
-    """Request containing an employee's IT support question."""
-
-    question: str = Field(
-        min_length=1,
-        max_length=2000,
-        description="The IT support question to answer",
+    question: str
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=10,
+        description="Maximum number of document chunks to retrieve"
     )
 
 
@@ -22,6 +22,10 @@ class RetrievalDetailResponse(BaseModel):
     rank: int
     distance: float
     similarity: float
+    content: str
+    child_id: str | None = None
+    rerank_score: float | None = None
+    rrf_score: float | None = None
 
 
 class AskResponse(BaseModel):
@@ -33,6 +37,9 @@ class AskResponse(BaseModel):
     retrieval_details: list[RetrievalDetailResponse] = Field(
         default_factory=list
     )
+    privacy: dict = Field(default_factory=dict)
+    trace_id: str | None = None
+    tracing_status: str = "disabled_or_unavailable"
 
 
 class HealthResponse(BaseModel):

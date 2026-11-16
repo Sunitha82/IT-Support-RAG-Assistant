@@ -1,0 +1,194 @@
+
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  acrName: 'acritrag2026'
+  acrLoginServer: 'acritrag2026.azurecr.io'
+  imageTag: '$(Build.BuildId)'
+  # Set this to YOUR Langfuse project's region before running the pipeline.
+  langfuseBaseUrl: 'https://cloud.langfuse.com'
+
+stages:
+  - stage: BuildAndPush
+    displayName: Build and Push Docker Images
+    jobs:
+      - job: DockerImages
+        displayName: FastAPI and Streamlit
+        timeoutInMinutes: 90
+        steps:
+          - checkout: self
+
+          - script: |
+              set -euo pipefail
+              echo "Source commit: $(Build.SourceVersion)"
+              test -f app/retrieval/enhanced_retriever.py
+              grep -q 'langfuse==' requirements.txt
+              if [ -z "$LANGFUSE_BASE_URL" ]; then
+                echo "ERROR: Set langfuseBaseUrl to your Langfuse project's base URL."
+                exit 1
+              fi
+              df -h
+              docker system df
+              docker buildx version
+            displayName: Check Agent Resources
+            env:
+              LANGFUSE_BASE_URL: $(langfuseBaseUrl)
+
+          - task: AzureCLI@2
+            displayName: Build and Push Images to ACR
+            inputs:
+              azureSubscription: 'sc-it-rag-azure'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -euo pipefail
+
+                az acr login --name $(acrName)
+
+                docker buildx create \
+                  --name rag-builder \
+                  --driver docker-container \
+                  --use
+
+                docker buildx inspect --bootstrap
+
+                docker buildx build \
+                  --platform linux/amd64 \
+                  -f Dockerfile.api \
+                  -t $(acrLoginServer)/it-support-rag-api:$(imageTag) \
+                  --push \
+                  .
+
+                docker buildx build \
+                  --platform linux/amd64 \
+                  -f Dockerfile.ui \
+                  -t $(acrLoginServer)/it-support-rag-ui:$(imageTag) \
+                  --push \
+                  .
+
+                echo "Both Docker images pushed successfully."
+
+  - stage: Deploy
+    displayName: Deploy to Azure Container Apps
+    dependsOn: BuildAndPush
+    condition: succeeded()
+
+    jobs:
+      - job: DeployApps
+        displayName: Deploy FastAPI and Streamlit
+
+        steps:
+          - task: AzureCLI@2
+            displayName: Deploy Container Apps
+            inputs:
+              azureSubscription: 'sc-it-rag-azure'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                set -euo pipefail
+
+                RG="rag-demo-rg"
+                ACR="$(acrLoginServer)"
+                TAG="$(imageTag)"
+
+                echo "Deploying build $TAG"
+
+                # ------------------------------------
+                # Update existing apps; keep their secrets and pull identities.
+                # ------------------------------------
+                for APP in ca-it-rag-api ca-it-rag-ui; do
+                  az containerapp show \
+                    --name "$APP" --resource-group "$RG" --output none
+                done
+
+                # The UI must already have this app-scoped secret.
+                SECRET_COUNT=$(az containerapp show \
+                  --name ca-it-rag-ui --resource-group "$RG" \
+                  --query "length(properties.configuration.secrets[?name=='rag-api-key'])" \
+                  -o tsv)
+                if [ "$SECRET_COUNT" != "1" ]; then
+                  echo "ERROR: UI secret rag-api-key is missing. Configure it before deploying."
+                  exit 1
+                fi
+
+                # Keep credentials in Key Vault. These two secrets must exist there
+                # before this pipeline runs. No values are embedded in the YAML.
+                IDENTITY_ID=$(az identity show \
+                  --name id-it-rag-acr-pull --resource-group "$RG" --query id -o tsv)
+                az containerapp secret set \
+                  --name ca-it-rag-api --resource-group "$RG" \
+                  --secrets \
+                    "langfuse-public-key=keyvaultref:https://kv-it-rag-2026.vault.azure.net/secrets/langfuse-public-key,identityref:$IDENTITY_ID" \
+                    "langfuse-secret-key=keyvaultref:https://kv-it-rag-2026.vault.azure.net/secrets/langfuse-secret-key,identityref:$IDENTITY_ID" \
+                  --output none
+
+                az containerapp update \
+                  --name ca-it-rag-api \
+                  --resource-group "$RG" \
+                  --image "$ACR/it-support-rag-api:$TAG" \
+                  --cpu 1.0 --memory 2Gi \
+                  --min-replicas 1 --max-replicas 1 \
+                  --set-env-vars \
+                    "VECTOR_STORE_PROVIDER=faiss" \
+                    "RETRIEVAL_MODE=enhanced" \
+                    "FAISS_DIR=/app/faiss_db" \
+                    "PARENT_CHILD_FAISS_DIR=/app/faiss_parent_child_db" \
+                    "HF_HOME=/app/hf_cache" \
+                    "HF_HUB_OFFLINE=1" \
+                    "USE_AZURE_KEY_VAULT=false" \
+                    "LANGFUSE_ENABLED=true" \
+                    "LANGFUSE_BASE_URL=$LANGFUSE_BASE_URL" \
+                    "LANGFUSE_PUBLIC_KEY=secretref:langfuse-public-key" \
+                    "LANGFUSE_SECRET_KEY=secretref:langfuse-secret-key" \
+                  --output none
+
+                # ------------------------------------
+                # Get FastAPI internal URL
+                # ------------------------------------
+                API_FQDN=$(az containerapp show \
+                  --name ca-it-rag-api \
+                  --resource-group "$RG" \
+                  --query properties.configuration.ingress.fqdn \
+                  -o tsv)
+
+                if [ -z "$API_FQDN" ]; then
+                  echo "ERROR: FastAPI FQDN not found."
+                  exit 1
+                fi
+
+                API_URL="https://$API_FQDN"
+
+                echo "FastAPI internal URL: $API_URL"
+
+                # ------------------------------------
+                # Deploy Streamlit UI
+                # ------------------------------------
+                az containerapp update \
+                  --name ca-it-rag-ui \
+                  --resource-group "$RG" \
+                  --image "$ACR/it-support-rag-ui:$TAG" \
+                  --set-env-vars \
+                    "RAG_API_URL=$API_URL" \
+                    "RAG_API_KEY=secretref:rag-api-key" \
+                  --output none
+
+                echo "Container App deployment commands completed."
+
+                # ------------------------------------
+                # Display Streamlit URL
+                # ------------------------------------
+                UI_FQDN=$(az containerapp show \
+                  --name ca-it-rag-ui \
+                  --resource-group "$RG" \
+                  --query properties.configuration.ingress.fqdn \
+                  -o tsv)
+
+                echo "Streamlit UI: https://$UI_FQDN"
+            env:
+              LANGFUSE_BASE_URL: $(langfuseBaseUrl)

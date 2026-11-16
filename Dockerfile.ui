@@ -12,8 +12,9 @@ RUN pip install --no-cache-dir streamlit requests
 # Create a non-root user
 RUN useradd --create-home --uid 10001 appuser
 
-# Copy the Streamlit application
-COPY --chown=appuser:appuser app/ui/ ./app/ui/
+# Copy the complete application package
+COPY --chown=appuser:appuser app/ ./app/
+COPY --chown=appuser:appuser .streamlit/ ./.streamlit/
 
 # Switch to non-root user
 USER appuser
